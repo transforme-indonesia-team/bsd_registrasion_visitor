@@ -1,0 +1,19 @@
+{
+  "system": "Guest Registration System",
+  "title": "Residence One BSD",
+  "subtitle": "Welcome! Please choose an option below to continue with your registration process.",
+  "getStarted": "Get Started",
+  "chooseOption": "Choose your registration option",
+  "newReg": "New Registration",
+  "already": "Already Registered",
+  "or": "or",
+  "findTitle": "Find Your Registration",
+  "findDesc": "Enter your phone number to search for existing registration",
+  "phoneLabel": "Phone Number",
+  "phonePlaceholder": "e.g., 08123456789",
+  "phoneError": "Please enter at least 10 digits",
+  "search": "Search",
+  "new": "New",
+  "back": "Back to Options",
+  "noData": "No data found. Please try again or register as a new guest."
+}

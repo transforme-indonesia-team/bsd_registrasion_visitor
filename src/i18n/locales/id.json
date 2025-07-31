@@ -1,0 +1,19 @@
+{
+  "system": "Sistem Pendaftaran Tamu",
+  "title": "Residence One BSD",
+  "subtitle": "Selamat datang! Silakan pilih salah satu opsi di bawah ini untuk melanjutkan proses pendaftaran Anda.",
+  "getStarted": "Mulai",
+  "chooseOption": "Pilih opsi pendaftaran Anda",
+  "newReg": "Daftar Baru",
+  "already": "Sudah Pernah Daftar",
+  "or": "atau",
+  "findTitle": "Cari Pendaftaran Anda",
+  "findDesc": "Masukkan nomor HP Anda untuk mencari pendaftaran yang sudah ada",
+  "phoneLabel": "Nomor HP",
+  "phonePlaceholder": "contoh, 08123456789",
+  "phoneError": "Silakan masukkan minimal 10 digit",
+  "search": "Cari",
+  "new": "Baru",
+  "back": "Kembali ke Opsi",
+  "noData": "Data tidak ditemukan. Silakan coba lagi atau daftar baru."
+}
