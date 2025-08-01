@@ -16,3 +16,31 @@ export function ApiSearchResident<T>(params: T) {
   });
   return res;
 }
+
+export function ApiGuestRegister<T>(payload: T) {
+  const url = webService + "public/master/guest-register";
+  const res = axios({
+    method: "POST",
+    data: payload,
+    url: url,
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": secretKey,
+    },
+  });
+  return res;
+}
+
+export function ApiGuestUpdate<T>(id: string, payload: T) {
+  const url = webService + `public/master/update-guest/${id}`;
+  const res = axios({
+    method: "PUT",
+    data: payload,
+    url: url,
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": secretKey,
+    },
+  });
+  return res;
+}

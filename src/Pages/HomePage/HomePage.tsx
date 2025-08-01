@@ -34,8 +34,9 @@ export default function HomePage() {
     setIsSearching(true);
     console.log("Searching for phone:", phone);
     const payload = {
-      search: phone,
-      residenceType: "guest",
+      "search": phone,
+      "residenceType": "guest",
+      "include[]": "image_base64",
     };
 
     try {
@@ -81,7 +82,7 @@ export default function HomePage() {
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 p-6">
-      <div className="absolute top-4 right-6 z-50">
+      {/* <div className="absolute top-4 right-6 z-50">
         <button
           onClick={() => setShowLangMenu(!showLangMenu)}
           className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow hover:bg-slate-100 transition"
@@ -110,7 +111,7 @@ export default function HomePage() {
             </button>
           </div>
         )}
-      </div>
+      </div> */}
 
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-4">
@@ -194,6 +195,7 @@ export default function HomePage() {
                   id="phone"
                   type="tel"
                   placeholder={t("phonePlaceholder")}
+                  autoComplete="off"
                   value={phone}
                   onChange={handlePhoneChange}
                   className="h-12 text-center text-lg tracking-wider border-2 focus:border-green-400 rounded-xl"

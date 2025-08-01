@@ -49,17 +49,19 @@ import {
 import { cn } from "@/lib/utils";
 import { ApiGetHouse } from "@/services/house";
 import { toast } from "sonner";
+import { ApiGuestRegister, ApiGuestUpdate } from "@/services/visitor";
+import { useLocation, useNavigate } from "react-router";
 
 interface FormData {
   full_name: string;
   gender: string;
   phone_number: string;
-  email: string;
+  email: null;
   plate_number: string;
   house_id: string;
   visit_date: string;
   visit_time: string;
-  guest_image: string;
+  image: string;
   plate_image: string;
 }
 
@@ -80,6 +82,9 @@ interface HouseOption {
 }
 
 function GuestRegistrationForm() {
+  const location = useLocation();
+  const { resident } = location.state || {};
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [guestImage, setGuestImage] = useState<string>("");
   const [plateImage, setPlateImage] = useState<string>("");
@@ -89,12 +94,12 @@ function GuestRegistrationForm() {
     full_name: "",
     gender: "",
     phone_number: "",
-    email: "",
+    email: null,
     plate_number: "",
     house_id: "",
     visit_date: "",
     visit_time: "",
-    guest_image: "",
+    image: "",
     plate_image: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
@@ -109,6 +114,8 @@ function GuestRegistrationForm() {
       reader.onload = () => resolve(reader.result as string);
       reader.onerror = (error) => reject(error);
     });
+
+  console.log("resident", resident);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -218,42 +225,73 @@ function GuestRegistrationForm() {
       return;
     }
 
-    try {
-      setLoading(true);
-
-      const submitData = {
-        ...formData,
-        guest_image: guestImage,
-        plate_image: plateImage,
-      };
-
-      console.log("Form Data:", submitData);
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Reset form
-      setFormData({
-        full_name: "",
-        gender: "",
-        phone_number: "",
-        email: "",
-        plate_number: "",
-        house_id: "",
-        visit_date: "",
-        visit_time: "",
-        guest_image: "",
-        plate_image: "",
-      });
-      setGuestImage("");
-      setPlateImage("");
-      setGuestImagePreview("");
-      setPlateImagePreview("");
-      setErrors({});
-
-      toast.success("Guest registered successfully", {
+    if (!guestImage || !plateImage) {
+      toast.error("Please upload both guest and plate images", {
         duration: 3000,
       });
+      return;
+    }
+
+    const { visit_date, visit_time, ...rest } = formData;
+
+    const submitData = {
+      ...rest,
+      birth_date: null,
+      image: guestImage,
+      plate_image: plateImage,
+      expired_at: `${visit_date} ${visit_time}:00`,
+    };
+
+    console.table(submitData);
+
+    try {
+      setLoading(true);
+      let data;
+      if (resident?.id) {
+        const res = await ApiGuestUpdate(resident.id, submitData);
+        data = res.data;
+      } else {
+        const res = await ApiGuestRegister(submitData);
+        data = res.data;
+      }
+
+      if ([200, 201].includes(data.status)) {
+        toast.success(data.message, {
+          duration: 3000,
+        });
+
+        toast.success(
+          `${
+            resident?.id
+              ? "Guest updated successfully"
+              : "Guest registered successfully"
+          }`,
+          {
+            duration: 3000,
+          }
+        );
+
+        setFormData({
+          full_name: "",
+          gender: "",
+          phone_number: "",
+          email: null,
+          plate_number: "",
+          house_id: "",
+          visit_date: "",
+          visit_time: "",
+          image: "",
+          plate_image: "",
+        });
+        setGuestImage("");
+        setPlateImage("");
+        setGuestImagePreview("");
+        setPlateImagePreview("");
+        setErrors({});
+        //hapus data dari state uselocation
+
+        navigate("/", { replace: true });
+      }
     } catch {
       toast.error("Failed to register guest", {
         duration: 3000,
@@ -268,12 +306,12 @@ function GuestRegistrationForm() {
       full_name: "",
       gender: "",
       phone_number: "",
-      email: "",
+      email: null,
       plate_number: "",
       house_id: "",
       visit_date: "",
       visit_time: "",
-      guest_image: "",
+      image: "",
       plate_image: "",
     });
     setGuestImage("");
@@ -331,6 +369,62 @@ function GuestRegistrationForm() {
     console.table(formData);
   }, [formData]);
 
+  useEffect(() => {
+    if (resident) {
+      console.log(resident.gender, "testing123123");
+      let visit_date = "";
+      let visit_time = "";
+
+      const expiredAt = resident?.resident_houses?.[0]?.expired_at;
+      if (expiredAt) {
+        const [date, time] = expiredAt.split(" ");
+        visit_date = date;
+        visit_time = time ? time.slice(0, 5) : "";
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        full_name: resident.full_name || "",
+        email: resident.email || null,
+        phone_number: resident.phone_number || "",
+        gender: resident.gender || "",
+        house_id: resident.resident_houses[0]?.house?.id || "",
+        visit_date: visit_date,
+        visit_time: visit_time,
+        image: resident?.image_base64 || "",
+        plate_image:
+          resident.resident_houses[0]?.guest_vehicles[0]?.plate_image_base64 ||
+          "",
+        plate_number:
+          resident.resident_houses[0]?.guest_vehicles[0]?.plate_number,
+      }));
+      if (resident?.image_base64) {
+        setGuestImagePreview(`data:image/jpeg;base64,${resident.image_base64}`);
+        setGuestImage(resident.image_base64);
+      }
+
+      const plateBase64 =
+        resident.resident_houses[0]?.guest_vehicles[0]?.plate_image_base64;
+
+      if (plateBase64) {
+        setPlateImagePreview(`data:image/jpeg;base64,${plateBase64}`);
+        setPlateImage(plateBase64);
+      }
+    }
+  }, [resident]);
+
+  useEffect(() => {
+    if (resident?.house_id && houseList.length > 0) {
+      const found = houseList.find((h) => h.id === resident.house_id);
+      if (found) {
+        setFormData((prev) => ({
+          ...prev,
+          house_id: resident.house_id,
+        }));
+      }
+    }
+  }, [resident, houseList]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
       <div className="mx-auto max-w-4xl">
@@ -373,6 +467,7 @@ function GuestRegistrationForm() {
                       id="full_name"
                       placeholder="Enter full name"
                       value={formData.full_name}
+                      autoComplete="off"
                       onChange={(e) =>
                         handleInputChange("full_name", e.target.value)
                       }
@@ -394,8 +489,13 @@ function GuestRegistrationForm() {
                     <Label htmlFor="gender" className="text-sm font-medium">
                       Gender <span className="text-red-500">*</span>
                     </Label>
+
+                    {(() => {
+                      console.log("Select value sekarang:", formData.gender);
+                      return null;
+                    })()}
                     <Select
-                      value={formData.gender}
+                      value={formData.gender || resident?.gender}
                       onValueChange={(value) =>
                         handleInputChange("gender", value)
                       }
@@ -434,6 +534,7 @@ function GuestRegistrationForm() {
                         id="phone_number"
                         placeholder="e.g. 08123456789"
                         value={formData.phone_number}
+                        autoComplete="off"
                         onChange={(e) => {
                           const value = e.target.value.replace(/\D/g, "");
                           handleInputChange("phone_number", value);
@@ -464,7 +565,8 @@ function GuestRegistrationForm() {
                         id="email"
                         type="email"
                         placeholder="email@example.com"
-                        value={formData.email}
+                        value={formData.email ?? ""}
+                        autoComplete="off"
                         onChange={(e) =>
                           handleInputChange("email", e.target.value)
                         }
@@ -512,6 +614,7 @@ function GuestRegistrationForm() {
                       id="plate_number"
                       placeholder="e.g. B1234XYZ"
                       value={formData.plate_number}
+                      autoComplete="off"
                       onChange={(e) => {
                         const value = e.target.value
                           .replace(/[^a-zA-Z0-9]/g, "")
@@ -627,7 +730,7 @@ function GuestRegistrationForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="visit_date" className="text-sm font-medium">
-                      Visit Date <span className="text-red-500">*</span>
+                      Expired Date <span className="text-red-500">*</span>
                     </Label>
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -656,7 +759,7 @@ function GuestRegistrationForm() {
 
                   <div className="space-y-2">
                     <Label htmlFor="visit_time" className="text-sm font-medium">
-                      Visit Time <span className="text-red-500">*</span>
+                      Expired Time <span className="text-red-500">*</span>
                     </Label>
                     <div className="relative">
                       <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -687,7 +790,7 @@ function GuestRegistrationForm() {
                     <div className="flex items-center gap-2">
                       <Check className="w-4 h-4 text-blue-600" />
                       <span className="text-sm font-medium text-blue-800">
-                        Scheduled Visit:
+                        Expired Visit:
                       </span>
                     </div>
                     <p className="text-blue-700 mt-1">
@@ -731,14 +834,18 @@ function GuestRegistrationForm() {
                           accept="image/*"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (file) {
-                              handleFileUpload(file, "guest");
-                            }
+                            if (file) handleFileUpload(file, "guest");
                           }}
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         />
                       )}
                       <div
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const file = e.dataTransfer.files?.[0];
+                          if (file) handleFileUpload(file, "guest");
+                        }}
                         className={cn(
                           "relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 hover:border-blue-400 hover:bg-blue-50/50",
                           guestImagePreview
@@ -769,13 +876,7 @@ function GuestRegistrationForm() {
                               }}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
-                              <X
-                                className="w-4 h-4 mr-1"
-                                onClick={() => {
-                                  console.log("testingRemove");
-                                  setGuestImage("");
-                                }}
-                              />
+                              <X className="w-4 h-4 mr-1" />
                               Remove
                             </Button>
                           </div>
@@ -786,7 +887,7 @@ function GuestRegistrationForm() {
                             </div>
                             <div>
                               <p className="text-lg font-medium text-gray-700">
-                                Upload Guest Photo
+                                Drag & Drop or Click to Upload
                               </p>
                               <p className="text-sm text-muted-foreground mt-1">
                                 Max 5MB • JPG, PNG supported
@@ -797,7 +898,6 @@ function GuestRegistrationForm() {
                       </div>
                     </div>
                   </div>
-
                   {/* Plate Photo Upload */}
                   <div className="space-y-3">
                     <Label className="text-sm font-medium">
@@ -810,14 +910,18 @@ function GuestRegistrationForm() {
                           accept="image/*"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (file) {
-                              handleFileUpload(file, "plate");
-                            }
+                            if (file) handleFileUpload(file, "plate");
                           }}
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         />
                       )}
                       <div
+                        onDragOver={(e) => e.preventDefault()} // aktifkan drag over
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const file = e.dataTransfer.files?.[0];
+                          if (file) handleFileUpload(file, "plate");
+                        }}
                         className={cn(
                           "relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 hover:border-green-400 hover:bg-green-50/50",
                           plateImagePreview
@@ -859,7 +963,7 @@ function GuestRegistrationForm() {
                             </div>
                             <div>
                               <p className="text-lg font-medium text-gray-700">
-                                Upload Plate Photo
+                                Drag & Drop or Click to Upload
                               </p>
                               <p className="text-sm text-muted-foreground mt-1">
                                 Max 5MB • JPG, PNG supported
@@ -874,15 +978,19 @@ function GuestRegistrationForm() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4 pt-8">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleReset}
-                  className="flex-1 h-12 text-base bg-transparent"
-                  disabled={loading}
-                >
-                  Reset Form
-                </Button>
+                {!resident && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleReset}
+                      className="flex-1 h-12 text-base bg-transparent"
+                      disabled={loading}
+                    >
+                      Reset Form
+                    </Button>
+                  </>
+                )}
                 <Button
                   type="submit"
                   className="flex-1 h-12 text-base bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
@@ -891,10 +999,10 @@ function GuestRegistrationForm() {
                   {loading ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Registering...
+                      {resident ? "Updating..." : "Registering..."}
                     </div>
                   ) : (
-                    "Register Guest"
+                    <>{resident ? "Update" : "Register"}</>
                   )}
                 </Button>
               </div>
